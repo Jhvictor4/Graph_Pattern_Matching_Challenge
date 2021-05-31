@@ -5,18 +5,106 @@
 
 #include "backtrack.h"
 
-Backtrack::Backtrack() {}
-Backtrack::~Backtrack() {}
+using namespace std;
 
+Backtrack::Backtrack() {
+    mapping = {};
+    visited = {};
+}
+Backtrack::~Backtrack() = default;
 
-
+/**
+ * Backtracking - Main method of this hw
+ * @param data
+ * @param query
+ * @param cs
+ *
+ * Use Dynamic Programming; public Pair<Vertex, Vertex>
+ *
+ * Workflow
+ * 1: Get an arbitrary root in Query graph - do the same as step 2, 3 in practice (not sure)
+ * 2: find extendable vertex u
+ *    -> Candidate-size order; Choose u such that has min(Cm(u)).
+ * 3: In Cm(u), select each one like DFS and recurse
+ *
+ * replace printf to output file before submit!
+ */
 void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
                                 const CandidateSet &cs) {
-  std::cout << "t " << query.GetNumVertices() << "\n";
-  std::cout<<"This is for test~"<<std::endl;
 
-  
+  cout << "Hello world" << "\n";
+
+    // step 0 -> initialize Mapping & Visited; mapping has -1, visited has false
+    mapping.resize(query.GetNumVertices());
+    for_each(mapping.begin(), mapping.end(), [](Vertex u){ u = -1; });
+    visited.resize(data.GetNumVertices());
+    cout << "t " << query.GetNumVertices() << "\n";
+
+    // step 1 -> "find root"; find u such that has minimum # in CS - not sure yet, just start with id 0
+    Vertex root = 0;
+
+    // step 2 -> start backtracking; Cm(u) 안의 v들에 대해 dfs 순으로 탐색
+    Vertex uid = root;
+    mapping[uid] = cs.GetCandidate(uid, 0); // todo: does root(u with id 0) always have one candidate v?
+    while( !mapping.empty() ){
+        if(Map(uid, cs.GetCandidateSet(uid))){
+            if(mapping.size() == query.GetNumVertices()){
+                cout << "a ";
+                for_each(mapping.begin(), mapping.end(), [](Vertex v){ cout << v << " "; });
+                cout << "\n";
+            }
+            else {
+                // move to next u (extendable)
+                // todo: implement fetching extendable U (check parent,,, do something)
+                uid = GetExtendable();
+            }
+        }
+        else{
+            // if Map is false -> it's not updated
+            // back to previous u
+            uid = mapping.back();
+            mapping.pop_back();
+        }
+    }
 }
+
+/**
+ * Mapping : find (u, v) pair
+ * -> extendable u
+ * -> unvisited v (v in Cm(u))
+ *
+ * return
+ * true : successfully mapped ; added (u, v)
+ * false : no mapping available ; mapping is not updated
+ */
+bool Backtrack::Map(Vertex u, const vector<Vertex>& candidates) {
+
+    for(int v : candidates){
+        if( !visited[v] && CheckCMU(u, v) ){
+            // first - fit search
+            mapping[u] = v;
+            visited[v] = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+// todo: Implement CheckCMU -> is this v (data vertex) has all Cm(u_p) as its parents? (u_p -> u's parents)
+
+bool Backtrack::CheckCMU(Vertex u, Vertex v) {
+    // check whether v is in Cm(u) of u
+}
+
+Vertex Backtrack::GetExtendable() {
+    //get extendable U with some logic
+}
+
+
+/**
+ *  upper : 지혁
+ *  below : 대용
+ */
 
 
 /*
@@ -88,9 +176,7 @@ void cut(std::set<Vertex> cutSet, Vertex v, const Graph &query) {
 
 void checkNeighborWithParVertice() {
 
-
 }
-
 
 /*
  * [ C_M 구하기 ]
@@ -105,7 +191,7 @@ int calculateCsSize(std::vector<Vertex> tempCS, std::vector<std::vector<Vertex>>
         int possibleVertex = 0;
         for (int i=0; i< cs.GetCandidateSize(u); i++) {
             // if checkNeighborWithParVertice((cs.GetCandidate(u, i))) {// checkNeighbor 후 연결 되어있으면
-        // possibleVertex++;}
+            // possibleVertex++;}
         }
     };
     int min = csNum.at(0);
@@ -121,7 +207,7 @@ int calculateCsSize(std::vector<Vertex> tempCS, std::vector<std::vector<Vertex>>
 }
 
 void candidateSizeOrder(std::vector<Vertex> Q, std::vector<Vertex> D, const Graph &data, const Graph &query,
-                 const CandidateSet &cs) {
+                        const CandidateSet &cs) {
     // Q는 지금까지 선택된 query graph의 vertex들
     // notQ는 선택되지 않은 query graph의 vertex들.
     // D는 지금까지 선택된 data graph의 vertex들.
