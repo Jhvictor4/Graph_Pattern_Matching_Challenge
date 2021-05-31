@@ -9,14 +9,24 @@
 #include "candidate_set.h"
 #include "common.h"
 #include "graph.h"
+#include <utility>
+
+using namespace std;
 
 class Backtrack {
  public:
   Backtrack();
   ~Backtrack();
 
+  static vector<Vertex> mapping;
+  static vector<bool> visited;
+
   void PrintAllMatches(const Graph &data, const Graph &query,
                        const CandidateSet &cs);
+
+  bool Map(Vertex u, const vector<Vertex>& candidates);
+  bool CheckCMU(Vertex u, Vertex v);
+  Vertex GetExtendable();
 };
 
 #endif  // BACKTRACK_H_

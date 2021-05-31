@@ -1,0 +1,5 @@
+/home/jirm/바탕화면/alg/build/CMakeFiles/rebuild_cache.dir
+/home/jirm/바탕화면/alg/build/CMakeFiles/edit_cache.dir
+/home/jirm/바탕화면/alg/build/main/CMakeFiles/rebuild_cache.dir
+/home/jirm/바탕화면/alg/build/main/CMakeFiles/program.dir
+/home/jirm/바탕화면/alg/build/main/CMakeFiles/edit_cache.dir
