@@ -72,7 +72,7 @@ bool checkParent(std::vector<std::vector<Vertex>> parArray, Vertex v, std::vecto
  */
 
 void cut(std::set<Vertex> cutSet, Vertex v, const Graph &query) {
-    for (size_t j = query.GetNeighborStartOffset(v); j < query.GetNeighborEndOffset(v); ++j) {
+    for (size_t j = query.GetNeighborStartOffset(v); j < query.GetNeighborEndOffset(v); ++j) { // 1차원 arr // 
         Vertex neighbor = query.GetNeighbor(j);
         if (neighbor>v) {
             cutSet.insert(neighbor);
@@ -86,9 +86,43 @@ void cut(std::set<Vertex> cutSet, Vertex v, const Graph &query) {
  *
  */
 
-void checkNeighborWithParVertice() {
+int checkNeighborWithParVertex(Vertex v, std::vector<std::vector<Vertex>> parArray) {
 
+    std::vector<Vertex> csVertices; // 얘도 미리 주어지면 좋음.
+    // 현재 Q의 CS의 vertices
+    std::vector<Vertex> selectedVertices; //  Selected vertex 모음
+    /*
+     *  selectedVertices 얘는 백트래킹 중 넘겨줘야 함
+     */
 
+    std::vector<Vertex> selectedVerticesFromParents;
+    for (Vertex par : parArray.at(v)) { // q_D의 Vertex들을 의미
+        for (Vertex parV: selectedVertices) { // CS 내의 선택된 v8과 v9를 의미.
+            //if (parV belongs to CS(par)) {
+            selectedVerticesFromParents.push_back(parV);
+            //}
+        }
+    }
+    /*
+     * Q, 혹은 CS() 정보만으로 선택된 v 바로 특정할 수 있나???
+     */
+
+    int C_M = 0;
+    for (Vertex v : csVertices) {
+        int cnt =0;
+        for (Vertex parV : selectedVerticesFromParents) { // v8 v9
+            //if (parV. is neighbor with v ) {
+                cnt++;
+            //}
+        }
+
+        // mapping에서 가져오기.
+
+        if (cnt == selectedVerticesFromParents.size()) {
+            C_M++;
+        }
+    }
+    return C_M;
 }
 
 
@@ -104,7 +138,7 @@ int calculateCsSize(std::vector<Vertex> tempCS, std::vector<std::vector<Vertex>>
     for (Vertex u: tempCS) {
         int possibleVertex = 0;
         for (int i=0; i< cs.GetCandidateSize(u); i++) {
-            // if checkNeighborWithParVertice((cs.GetCandidate(u, i))) {// checkNeighbor 후 연결 되어있으면
+            // if checkNeighborWithParVertex((cs.GetCandidate(u, i))) {// checkNeighbor 후 연결 되어있으면
         // possibleVertex++;}
         }
     };
@@ -127,20 +161,33 @@ void candidateSizeOrder(std::vector<Vertex> Q, std::vector<Vertex> D, const Grap
     // D는 지금까지 선택된 data graph의 vertex들.
 
     std::vector<Vertex> notQ;
-    std::vector<Vertex> tempCS;
+
+    std::vector<Vertex> tempCS; // 후보군이 담길 Q의 vertex
 
     // notQ 중 cs를 뽑기 with 최적화
     std::set<Vertex> cutArr;
+
     std::set<Vertex>::iterator iter;
     for (Vertex v : notQ) {
         iter = cutArr.find(v);
         if (iter==cutArr.end()) {
             continue;
         }
-        //if (checkParent()) {
-        // tempCS.pushback(v);
-        // cut(cutArr, v)
-        // }
+//        if (checkParent()) {
+//         tempCS.pushback(v);
+//         cut(cutArr, v)
+//         }
     }
+    // temp cs에 u4 u7이 담김
+
+    /*
+     * 루트 정하고 정해진 오더링에 으해서 백트래킹 돌잖아.
+     * temp cs를 어떻게 돌지.
+     * 이게 지금 ppt 20페이 보면 쿼리그래프 방향 有. 들어올땐 방향 없음. 루트를 정하는게 가장 중요.
+     * 이해하고 있는게 맞다면 그렇게 해야. id가 작은 것이 par. 인접행렬 중 idx로 정해놓고.
+     * root. 그래프 모양이 cycliclic
+     */
+
+
 
 }
