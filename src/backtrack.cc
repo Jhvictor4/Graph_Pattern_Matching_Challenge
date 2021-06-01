@@ -10,6 +10,11 @@ using namespace std;
 Backtrack::Backtrack() {
     mapping = {};
     visited = {};
+    // 대용추가
+    parentArray = {};
+    childArray = {};
+    visitedQuery = {};
+    notVisitedQuery = {};
 }
 Backtrack::~Backtrack() = default;
 
@@ -34,7 +39,8 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
 
   cout << "Hello world" << "\n";
 
-    // step 0 -> initialize Mapping & Visited; mapping has -1, visited has false
+    // step 0 -> initialize Mapping & Visited & parentArray; mapping has -1, visited has false
+    BuildParentChild(query);
     mapping.resize(query.GetNumVertices());
     for_each(mapping.begin(), mapping.end(), [](Vertex u){ u = -1; });
     visited.resize(data.GetNumVertices());
@@ -47,7 +53,7 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
     Vertex uid = root;
     mapping[uid] = cs.GetCandidate(uid, 0); // todo: does root(u with id 0) always have one candidate v?
     while( !mapping.empty() ){
-        if(Map(uid, cs.GetCandidateSet(uid))){
+        if(Map(data, uid, cs.GetCandidateSet(uid))){
             if(mapping.size() == query.GetNumVertices()){
                 cout << "a ";
                 for_each(mapping.begin(), mapping.end(), [](Vertex v){ cout << v << " "; });
@@ -56,7 +62,7 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
             else {
                 // move to next u (extendable)
                 // todo: implement fetching extendable U (check parent,,, do something)
-                uid = GetExtendable();
+                uid = GetExtendable(query); // ** 수정 필요
             }
         }
         else{
@@ -77,10 +83,10 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
  * true : successfully mapped ; added (u, v)
  * false : no mapping available ; mapping is not updated
  */
-bool Backtrack::Map(Vertex u, const vector<Vertex>& candidates) {
+bool Backtrack::Map(const Graph &data, Vertex u, const vector<Vertex>& candidates) {
 
     for(int v : candidates){
-        if( !visited[v] && CheckCMU(u, v) ){
+        if( !visited[v] && CheckCMU(data, u, v) ){
             // first - fit search
             mapping[u] = v;
             visited[v] = true;
@@ -90,186 +96,137 @@ bool Backtrack::Map(Vertex u, const vector<Vertex>& candidates) {
     return false;
 }
 
-// todo: Implement CheckCMU -> is this v (data vertex) has all Cm(u_p) as its parents? (u_p -> u's parents)
-
-bool Backtrack::CheckCMU(Vertex u, Vertex v) {
-    // check whether v is in Cm(u) of u
-}
-
-Vertex Backtrack::GetExtendable() {
-    //get extendable U with some logic
-}
-
 
 /**
- *  upper : 지혁
- *  below : 대용
+ * [ Get Extendable ] extendable 한 Query Graph의 Vertex를 찾는다.
+ *
+ * @param query
+ * @return
  */
 
 
-/*
- * [ 시작하자마자 진행 ]
- * 0. buildParent
- * 1. 한 vertex v의 neighbor 중 v 보다 id가 작은 것이 parent이다.
- * 2. query graph내의 모든 vertex에 대해 parent를 담은 이중 배열을 리턴한다.
- */
+pair<Vertex, vector<Vertex>> Backtrack::GetExtendable(const Graph &data, const Graph &query,
+                                              const CandidateSet &cs) {
 
-std::vector<std::vector<Vertex>> buildParent(Graph &query) {
+    set<Vertex> extendables; // Extendable vertices in Query graph
 
-    std::vector<std::vector<Vertex>> parArray;
-    int size = query.GetNumVertices();
-
-    for (int i=0; i<size; i++) {
-        Vertex v = i;
-        std::vector<Vertex> perVertexArr;
-        for (size_t j = query.GetNeighborStartOffset(v); j < query.GetNeighborEndOffset(v); ++j) {
-            Vertex neighbor = query.GetNeighbor(j);
-            if (neighbor<v) { perVertexArr.push_back(neighbor); } // neighbor이 parent
+    // visitedQuery.size() < notVisitedQuery.size() 라면, visited Query의 자식 중 not visited를 찾아 순회하는게 빠르다.
+    if (visitedQuery.size() < notVisitedQuery.size()) {
+        for (Vertex checked : visitedQuery) {
+            for (Vertex child : childArray[checked]) {
+                const bool valid = notVisitedQuery.find(child) != notVisitedQuery.end(); // nonvisited에 child가 있다.
+                if (valid && CheckParent(child)) extendables.insert(child);
+            }
         }
-        parArray.push_back(perVertexArr);
     }
+    // visitedQuery.size() > notVisitedQuery.size() 라면, 그냥 not visitied를 곧장 순회하는게 빠르다.
+    else {
+        for (Vertex v : notVisitedQuery) {
+            if (CheckParent(v)) extendables.insert(v);  // Extendable 한 Query Graph의 Vertices가 담겨있다.
+        }
+    }
+    std::vector<Vertex> extArray(extendables.size());
+    std::copy(extendables.begin(), extendables.end(), extArray.begin());
+    pair<Vertex, vector<Vertex>> res = CountCMU(data, cs, extArray);
+
+    return res;
+
 }
 
-/*
- * [ q_D의 후보를 찾는 과정 ]
- * 0. checkParent
- * 1. 특정 vertex q의 부모 p가 지금까지 거쳐 온 vertex의 집합 Q에 존재하는지 확인한다.
- * 2. 모든 부모가 Q에 있으면 true를, 아니면 false를 리턴한다.
- */
+pair<Vertex, vector<Vertex>> Backtrack:: CountCMU(const Graph &data, const CandidateSet &cs, vector<Vertex> extendables) {
 
-bool checkParent(std::vector<std::vector<Vertex>> parArray, Vertex v, std::vector<Vertex> Q, std::vector<Vertex> notQ) {
-    std::vector<Vertex> eachVecPar = parArray.at(v);
+    vector<int> cmuSizeArray;   // extendables의 원소들의 cmu size를 담을 배열
+    vector<vector<Vertex>> availableVertex; // 각 extendable 별 가능한 vertex
+    for (int i=0; i<extendables.size(); i++) {
+        int eachExtendableCmuSize=0;
+        vector<Vertex> eachExtendableVertex;
+        for (Vertex v : cs.GetCandidateSet(extendables[i])) {   // extendable 별 cs 순회
 
-    int res = 0;
-    for (Vertex p : eachVecPar) {
-        for (Vertex k : Q) {
-            if (p==k) res++;
+            bool isContinue=false;
+            for (Vertex toCheckVisited : visited) {
+                if (toCheckVisited==v) isContinue=true; // 기존에 방문한 적 있으면 count않고 스킵
+            }
+            if (isContinue) continue;
+
+            if (CheckCMU(data, extendables[i], v)) {    // CheckCMU(모든 부모와 연결되어있는지) 가 true면 cmu size 증가
+                eachExtendableCmuSize++;
+                eachExtendableVertex.push_back(v);      // 해당되는 vertex를 배열에 삽입
+            }
         }
+        cmuSizeArray[i] = eachExtendableCmuSize;
+        availableVertex[i] = eachExtendableVertex;
     }
-    if (res == eachVecPar.size()) { return true; }
+
+    int minIdx = min_element(cmuSizeArray.begin(), cmuSizeArray.end()) - cmuSizeArray.begin();  // 최소 cmu size의 idx 찾기
+    pair<Vertex, vector<Vertex>> temp;
+    temp.first = extendables[minIdx];       // first : 최소 cmu size의 extendable (u)
+    temp.second = availableVertex[minIdx];  // second : 해당 u의 가능한 v
+
+    return temp;
+}
+
+/**
+ * [ Check CM(u) ] Vertex v가 candidate set에 들어갈 수 있는지 (보라색으로 칠해지는지) 확인한다.
+ *
+ * @param data
+ * @param u : Query Graph Vertex
+ * @param v : Data Graph Vertex
+ * @return true: v가 cs에 포함된다. / false: v가 cs에 포함되지 않는다.
+ */
+bool Backtrack::CheckCMU(const Graph &data, Vertex u, Vertex v) {
+    // check whether v is in Cm(u) of u
+    int matchingNum=0;
+    for (Vertex parent: parentArray[u]) {   // u의 부모들을 순회하며
+        if (data.IsNeighbor(mapping[parent], v)) matchingNum++; // 부모가 map된 vertex와 인자 v가 연결되어있는지 확인
+    }
+    if (matchingNum==parentArray[u].size()) return true;
     return false;
 }
 
-/*
- * [ q_D의 후보를 찾는 과정 중 최적화 ]
- * 0. cut
- * 1. 특정 vertex가 cs 후보군으로 뽑혔다고 하자. 이때 이 vertex의 모든 자식들은 확인할 필요가 없다.
- * 2. 한 vertex v의 neighbor 중 v보다 큰 것들이 자식이다.
- * 3. 따라서 자식을 recursive하게 찾아서 그를 담은 집합을 리턴한다.
- * 4. 이 집합의 원소들은 cs 후보군을 찾을 때 처음부터 배제하도록 한다. (나름의 최적화)
- */
 
-void cut(std::set<Vertex> cutSet, Vertex v, const Graph &query) {
-    for (size_t j = query.GetNeighborStartOffset(v); j < query.GetNeighborEndOffset(v); ++j) { // 1차원 arr // 
-        Vertex neighbor = query.GetNeighbor(j);
-        if (neighbor>v) {
-            cutSet.insert(neighbor);
-            cut(cutSet, neighbor, query); // 재귀적으로 자식 다 찾기
-        } // neighbor이 parent
-    }
-}
 
-/*
- * [ C_M 구하는 중 연산 ]
+/**
+ * [BUILD PARENT] Query Graph의 Vertices에 대하여, 특정 Vertex v의 neighbor 중 v보다 id가 작은 것을 parent로 둔다.
  *
+ * @param query : Query Graph
+ * @return : Query graph내의 모든 vertices에 대해 parent를 담은 이중 배열을 리턴한다.
  */
 
-int checkNeighborWithParVertex(Vertex v, std::vector<std::vector<Vertex>> parArray) {
+void Backtrack::BuildParentChild(const Graph &query) {
 
-    std::vector<Vertex> csVertices; // 얘도 미리 주어지면 좋음.
-    // 현재 Q의 CS의 vertices
-    std::vector<Vertex> selectedVertices; //  Selected vertex 모음
-    /*
-     *  selectedVertices 얘는 백트래킹 중 넘겨줘야 함
-     */
-
-    std::vector<Vertex> selectedVerticesFromParents;
-    for (Vertex par : parArray.at(v)) { // q_D의 Vertex들을 의미
-        for (Vertex parV: selectedVertices) { // CS 내의 선택된 v8과 v9를 의미.
-            //if (parV belongs to CS(par)) {
-            selectedVerticesFromParents.push_back(parV);
-            //}
+    int size = query.GetNumVertices();
+    for (int i=0; i<size; i++) {    // Query Graph를 순회한다.
+        Vertex v = i;               // Query Graph 내의 Vertices를 id 순서대로 방문한다.
+        std::vector<Vertex> perVertexParArr;
+        std::vector<Vertex> perVertexCldArr;
+        for (size_t j = query.GetNeighborStartOffset(v); j < query.GetNeighborEndOffset(v); ++j) {
+            Vertex neighbor = query.GetNeighbor(j);
+            if (neighbor<v)  perVertexParArr.push_back(neighbor);   // 각 Vertex의 neighbor 중 id가 작은 것을 담는다.
+            else perVertexCldArr.push_back(neighbor);
         }
+        parentArray[i]=perVertexParArr;
+        childArray[i]=perVertexCldArr;
     }
-    /*
-     * Q, 혹은 CS() 정보만으로 선택된 v 바로 특정할 수 있나???
-     */
-
-    int C_M = 0;
-    for (Vertex v : csVertices) {
-        int cnt =0;
-        for (Vertex parV : selectedVerticesFromParents) { // v8 v9
-            //if (parV. is neighbor with v ) {
-                cnt++;
-            //}
-        }
-        if (cnt == selectedVerticesFromParents.size()) {
-            C_M++;
-        }
-    }
-    return C_M;
 }
 
-/*
- * [ C_M 구하기 ]
- * 0. calculateCsSize
- * 1.
+
+
+/**
+ * [ CHECK PARENT ] Query Graph의 특정 Vertex v의 Parent가 이미 체크되었는지 확인한다.
  *
+ * @param v : 부모를 확인하고자 하는 Query Graph의 Vertex
+ * @return True : 모든 부모가 체크되었음 / False : 체크되지 않은 부모가 있음
  */
-int calculateCsSize(std::vector<Vertex> tempCS, std::vector<std::vector<Vertex>> parArray, const CandidateSet &cs) {
 
-    std::vector<int> csNum;
-    for (Vertex u: tempCS) {
-        int possibleVertex = 0;
-        for (int i=0; i< cs.GetCandidateSize(u); i++) {
-        }
-    };
-    int min = csNum.at(0);
-    int minIdx = 0;
-    for (int i=1; i < tempCS.size(); i++) {
-        if (csNum.at(i)<min ) {
-            min = csNum.at(i);
-            minIdx=i;
-        }
+bool Backtrack::CheckParent(Vertex v) {
+
+    for (Vertex parent : parentArray[v]) {
+        const bool contains = notVisitedQuery.find(parent) != notVisitedQuery.end();
+        if (contains) return false;
+        return true;
     }
-    return minIdx; // 실제 연결된 v를 보내도 되고.
-
 }
 
-void candidateSizeOrder(std::vector<Vertex> Q, std::vector<Vertex> D, const Graph &data, const Graph &query,
-                        const CandidateSet &cs) {
-    // Q는 지금까지 선택된 query graph의 vertex들
-    // notQ는 선택되지 않은 query graph의 vertex들.
-    // D는 지금까지 선택된 data graph의 vertex들.
-
-    std::vector<Vertex> notQ;
-
-    std::vector<Vertex> tempCS; // 후보군이 담길 Q의 vertex
-
-    // notQ 중 cs를 뽑기 with 최적화
-    std::set<Vertex> cutArr;
-
-    std::set<Vertex>::iterator iter;
-    for (Vertex v : notQ) {
-        iter = cutArr.find(v);
-        if (iter==cutArr.end()) {
-            continue;
-        }
-//        if (checkParent()) {
-//         tempCS.pushback(v);
-//         cut(cutArr, v)
-//         }
-    }
-    // temp cs에 u4 u7이 담김
-
-    /*
-     * 루트 정하고 정해진 오더링에 으해서 백트래킹 돌잖아.
-     * temp cs를 어떻게 돌지.
-     * 이게 지금 ppt 20페이 보면 쿼리그래프 방향 有. 들어올땐 방향 없음. 루트를 정하는게 가장 중요.
-     * 이해하고 있는게 맞다면 그렇게 해야. id가 작은 것이 par. 인접행렬 중 idx로 정해놓고.
-     * root. 그래프 모양이 cycliclic
-     */
 
 
 
-}

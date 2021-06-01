@@ -14,19 +14,33 @@
 using namespace std;
 
 class Backtrack {
- public:
-  Backtrack();
-  ~Backtrack();
+public:
+    Backtrack();
 
-  static vector<Vertex> mapping;
-  static vector<bool> visited;
+    ~Backtrack();
 
-  void PrintAllMatches(const Graph &data, const Graph &query,
-                       const CandidateSet &cs);
+    static vector<Vertex> mapping;
+    static vector<bool> visited;
 
-  bool Map(Vertex u, const vector<Vertex>& candidates);
-  bool CheckCMU(Vertex u, Vertex v);
-  Vertex GetExtendable();
+    // 05.31 대용 추가
+    static set<Vertex> visitedQuery;
+    static set<Vertex> notVisitedQuery;
+    static vector<vector<Vertex>> parentArray;
+    static vector<vector<Vertex>> childArray;
+    //
+
+    void PrintAllMatches(const Graph &data, const Graph &query,
+                         const CandidateSet &cs);
+
+    bool Map(const Graph &data, Vertex u, const vector<Vertex> &candidates);
+
+    bool CheckCMU(const Graph &data, Vertex u, Vertex v);
+
+
+    void BuildParentChild(const Graph &query);
+    bool CheckParent(Vertex v);
+    pair<Vertex, vector<Vertex>>GetExtendable(const Graph &data, const Graph &query, const CandidateSet &cs);
+    pair<Vertex, vector<Vertex>> CountCMU(const Graph &data, const CandidateSet &cs, vector<Vertex> extendables);
 };
 
 #endif  // BACKTRACK_H_
