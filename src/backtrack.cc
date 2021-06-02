@@ -69,7 +69,8 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
             // if Map is false -> it's not updated
             // back to previous u
             uid = mapping.back();
-            mapping.pop_back();
+            mapping.pop_back(); // u에 맵핑된 vertex를 풀어주면 될 수도.
+
         }
     }
 }
@@ -153,8 +154,8 @@ pair<Vertex, vector<Vertex>> Backtrack:: CountCMU(const Graph &data, const Candi
                 eachExtendableVertex.push_back(v);      // 해당되는 vertex를 배열에 삽입
             }
         }
-        cmuSizeArray[i] = eachExtendableCmuSize;
-        availableVertex[i] = eachExtendableVertex;
+        cmuSizeArray.push_back(eachExtendableCmuSize);
+        availableVertex.push_back(eachExtendableVertex);
     }
 
     int minIdx = min_element(cmuSizeArray.begin(), cmuSizeArray.end()) - cmuSizeArray.begin();  // 최소 cmu size의 idx 찾기
@@ -183,8 +184,6 @@ bool Backtrack::CheckCMU(const Graph &data, Vertex u, Vertex v) {
     return false;
 }
 
-
-
 /**
  * [BUILD PARENT] Query Graph의 Vertices에 대하여, 특정 Vertex v의 neighbor 중 v보다 id가 작은 것을 parent로 둔다.
  *
@@ -204,8 +203,8 @@ void Backtrack::BuildParentChild(const Graph &query) {
             if (neighbor<v)  perVertexParArr.push_back(neighbor);   // 각 Vertex의 neighbor 중 id가 작은 것을 담는다.
             else perVertexCldArr.push_back(neighbor);
         }
-        parentArray[i]=perVertexParArr;
-        childArray[i]=perVertexCldArr;
+        parentArray.push_back(perVertexParArr);
+        childArray.push_back(perVertexCldArr);
     }
 }
 
@@ -227,6 +226,18 @@ bool Backtrack::CheckParent(Vertex v) {
     }
 }
 
+
+
+/*
+ * 1. data를 global로 관리할까
+ * 2. par/child arr = 똑같은 쿼리그래프 사이즈만큼의. 한번에 관리할 수 있다. 추가적인 함수를 둬서 list의 head를 갖고오게 한다면
+ * par를 구할 수 있고 // <무거울 듯>.
+ * 3. 붙여서 실행해보겠다.
+ *
+ * 하나만 날리잖아요.
+ * 한번 뽑힌 얘는 가지고 있으면 됨.
+ *
+ */
 
 
 
