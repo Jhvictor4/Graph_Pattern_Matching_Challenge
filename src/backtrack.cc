@@ -4,18 +4,28 @@
  */
 
 #include "backtrack.h"
+#include <utility>
+#include <stack>
 
 using namespace std;
 
+stack<pair<Vertex, Vertex>> Backtrack::stack;
+vector<Vertex> Backtrack::mapping;
+vector<Vertex> Backtrack::extendable;
+
+vector<bool> Backtrack::visited;
+
+// 05.31 대용 추가
+set<Vertex> Backtrack::visitedQuery;
+set<Vertex> Backtrack::notVisitedQuery;
+vector<vector<Vertex>> Backtrack::parentArray;
+vector<vector<Vertex>> Backtrack::childArray;
+//
+
 Backtrack::Backtrack() {
-    mapping = {};
-    visited = {};
-    // 대용추가
-    parentArray = {};
-    childArray = {};
-    visitedQuery = {};
-    notVisitedQuery = {};
+
 }
+
 Backtrack::~Backtrack() = default;
 
 /**
@@ -39,62 +49,59 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
 
   cout << "Hello world" << "\n";
 
-    // step 0 -> initialize Mapping & Visited & parentArray; mapping has -1, visited has false
-    BuildParentChild(query);
-    mapping.resize(query.GetNumVertices());
-    for_each(mapping.begin(), mapping.end(), [](Vertex u){ u = -1; });
-    visited.resize(data.GetNumVertices());
-    cout << "t " << query.GetNumVertices() << "\n";
+  // data init
+      mapping.reserve(query.GetNumVertices());
+  // data init done
 
-    // step 1 -> "find root"; find u such that has minimum # in CS - not sure yet, just start with id 0
-    Vertex root = 0;
+  // stack init
+      Vertex root = 0;
+      for(Vertex cds: cs.GetCandidateSet(root)){
+          // Root is exception of DFS traverse in this case
+          stack.push(pair<Vertex, Vertex>(root, cds));
+      }
+      mapping[root] = stack.top().second;
+  // stack init done
 
-    // step 2 -> start backtracking; Cm(u) 안의 v들에 대해 dfs 순으로 탐색
-    Vertex uid = root;
-    mapping[uid] = cs.GetCandidate(uid, 0); // todo: does root(u with id 0) always have one candidate v?
-    while( !mapping.empty() ){
-        if(Map(data, uid, cs.GetCandidateSet(uid))){
-            if(mapping.size() == query.GetNumVertices()){
-                cout << "a ";
-                for_each(mapping.begin(), mapping.end(), [](Vertex v){ cout << v << " "; });
-                cout << "\n";
-            }
-            else {
-                // move to next u (extendable)
-                // todo: implement fetching extendable U (check parent,,, do something)
-                uid = GetExtendable(query); // ** 수정 필요
-            }
-        }
-        else{
-            // if Map is false -> it's not updated
-            // back to previous u
-            uid = mapping.back();
-            mapping.pop_back(); // u에 맵핑된 vertex를 풀어주면 될 수도.
+  // Main start
+      while(!stack.empty()){
+          Vertex curr = stack.top().first;
+          Vertex curr_m = stack.top().second;
+          if(Map(curr, curr_m)) {
+              mapping[curr] = curr_m;
+              if (mapping.size() == query.GetNumVertices()) {
+                  cout << "a ";
+                  for_each(mapping.begin(), mapping.end(), [](Vertex v) { cout << v << " "; });
+                  cout << "\n";
+              } else {
+                  pair<Vertex, vector<Vertex>> next = GetExtendable(data, query, cs); // error 처리가 안됨 -> (-1, -1) 받는 걸로 두자
+                  for(Vertex v: next.second){
+                      stack.push(pair<Vertex, Vertex>(next.first, v)); // what does it do when error?
+                  }
+              }
+          }
+          else{
+              stack.pop();
+          }
+      }
+  // Main done
 
-        }
-    }
+
 }
 
 /**
- * Mapping : find (u, v) pair
- * -> extendable u
- * -> unvisited v (v in Cm(u))
+ * Check if the last is valid mapping
  *
- * return
- * true : successfully mapped ; added (u, v)
- * false : no mapping available ; mapping is not updated
+ * @param u
+ * @param v
+ * @return
  */
-bool Backtrack::Map(const Graph &data, Vertex u, const vector<Vertex>& candidates) {
+bool Backtrack::Map(Vertex u, Vertex v) {
 
-    for(int v : candidates){
-        if( !visited[v] && CheckCMU(data, u, v) ){
-            // first - fit search
-            mapping[u] = v;
-            visited[v] = true;
-            return true;
-        }
+    if(u < 0) return false;
+    else{
+        Backtrack::mapping[u] = v;
+        return true;
     }
-    return false;
 }
 
 
@@ -104,10 +111,8 @@ bool Backtrack::Map(const Graph &data, Vertex u, const vector<Vertex>& candidate
  * @param query
  * @return
  */
-
-
 pair<Vertex, vector<Vertex>> Backtrack::GetExtendable(const Graph &data, const Graph &query,
-                                              const CandidateSet &cs) {
+                                                      const CandidateSet &cs) {
 
     set<Vertex> extendables; // Extendable vertices in Query graph
 
@@ -120,7 +125,7 @@ pair<Vertex, vector<Vertex>> Backtrack::GetExtendable(const Graph &data, const G
             }
         }
     }
-    // visitedQuery.size() > notVisitedQuery.size() 라면, 그냥 not visitied를 곧장 순회하는게 빠르다.
+        // visitedQuery.size() > notVisitedQuery.size() 라면, 그냥 not visitied를 곧장 순회하는게 빠르다.
     else {
         for (Vertex v : notVisitedQuery) {
             if (CheckParent(v)) extendables.insert(v);  // Extendable 한 Query Graph의 Vertices가 담겨있다.
@@ -162,7 +167,6 @@ pair<Vertex, vector<Vertex>> Backtrack:: CountCMU(const Graph &data, const Candi
     pair<Vertex, vector<Vertex>> temp;
     temp.first = extendables[minIdx];       // first : 최소 cmu size의 extendable (u)
     temp.second = availableVertex[minIdx];  // second : 해당 u의 가능한 v
-
     return temp;
 }
 
@@ -238,6 +242,3 @@ bool Backtrack::CheckParent(Vertex v) {
  * 한번 뽑힌 얘는 가지고 있으면 됨.
  *
  */
-
-
-
