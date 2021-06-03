@@ -10,6 +10,7 @@
 #include "common.h"
 #include "graph.h"
 #include <utility>
+#include <stack>
 
 using namespace std;
 
@@ -19,7 +20,10 @@ public:
 
     ~Backtrack();
 
+    static stack<pair<Vertex, Vertex>> stack;
     static vector<Vertex> mapping;
+    static vector<Vertex> extendable;
+
     static vector<bool> visited;
 
     // 05.31 대용 추가
@@ -32,7 +36,7 @@ public:
     void PrintAllMatches(const Graph &data, const Graph &query,
                          const CandidateSet &cs);
 
-    bool Map(const Graph &data, Vertex u, const vector<Vertex> &candidates);
+    bool Map(Vertex u, Vertex v);
 
     bool CheckCMU(const Graph &data, Vertex u, Vertex v);
 
@@ -42,5 +46,6 @@ public:
     pair<Vertex, vector<Vertex>>GetExtendable(const Graph &data, const Graph &query, const CandidateSet &cs);
     pair<Vertex, vector<Vertex>> CountCMU(const Graph &data, const CandidateSet &cs, vector<Vertex> extendables);
 };
+
 
 #endif  // BACKTRACK_H_
