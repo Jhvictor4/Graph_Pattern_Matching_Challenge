@@ -26,40 +26,38 @@ Backtrack::~Backtrack() = default;
  * @param query
  * @param cs
  *
- * Use Dynamic Programming; public Pair<Vertex, Vertex>
+ * Use Dynamic Programming
  *
  * Workflow
- * 1: Get an arbitrary root in Query graph - do the same as step 2, 3 in practice (not sure)
+ * 1: map current (u,v) pair to Embedding
  * 2: find extendable vertex u
  *    -> Candidate-size order; Choose u such that has min(Cm(u)).
- * 3: In Cm(u), select each one like DFS and recurse
+ * 3: recurse
  *
  * replace printf to output file before submit!
  */
-
-
 void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
                                 const CandidateSet &cs) {
 
     mapping.clear(); EV.clear();
 
-    /// Root : 아무거나 잡아도 되는 게 맞다. BuildRoot 구현은 함
+    /// Root : 아무거나 잡아도 되는 게 맞다.
     Vertex root = 0;
     for(Vertex v : cs.GetCandidateSet(root)){
         stack.push(pair<Vertex, Vertex>(root, v));
     }
 
-    int cnt = 0;
-    bool credit = true; // true when root
-    clock_t start = clock();
-    /// DFS 방식에는 문제가 없다.
+    /// information field
+    size_t N = query.GetNumVertices();       // N = query size
+    bool credit = true;                      // flag to tell each step's result (success / fail)
+    //int cnt = 0;
+    //clock_t start = clock();
+    /// declaration done
+
+    cout << "t " << N << "\n";
     while(!stack.empty())
     {
-        clock_t now = clock();
-        if(now - start >= 60000) {
-            cout << "time out, total cnt: " << cnt << "\n";
-            return;
-        }
+        //if(clock() - start >= 60000) break;
 
         Vertex curr = stack.top().first, curr_m = stack.top().second;
         /// 1. try Mapping - test passed
@@ -67,19 +65,15 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
         {
             mapping[curr] = curr_m;
             /// 2. when success
-            if( mapping.size() == query.GetNumVertices() )
+            if( mapping.size() == N )
             {
                 /// 2-1. if all are mapped, print one
-                cnt++;
-//                cout << " ";
-//                for_each(mapping.begin(), mapping.end(), [](pair<Vertex, Vertex> pair){
-//                    cout << pair.second << " ";
-//                });
-//                cout << "\n";
-                if(cnt>=100000) {
-                    cout << "total cnt done, elapsed time: " << clock() - start << "\n";
-                    return;
-                }
+                //cnt++;
+                cout << "a ";
+                for_each(mapping.begin(), mapping.end(), [](pair<Vertex, Vertex> pair){
+                    cout << pair.second << " ";
+                });
+                cout << "\n";
                 credit = false;
             }
             else
@@ -98,6 +92,7 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
 
                     /// 2-2-1. Get next extendable Vertex
                     pair<Vertex, vector<Vertex>> next = GetExtendable(data, query, cs); // if empty vector comes in, then it means failure, then restart
+
                     /// 2-2-2. Push next to Stack
                     if(next.second.empty()){
                         credit = false;
@@ -142,11 +137,20 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
         }
         //trace();
     }
-    cout << "total cnt: " << cnt << "\n";
+    //cout << "elapsed time: " << clock()-start << "ms, total cnt: " << cnt << endl;
+    //cout << cnt << endl;
 }
 
 
-/// update ; need to check whether the data vertex is already in mapping or not
+/**
+ * tryMap : check if mapping (u, v) is available
+ *
+ * @param u
+ * @param v
+ * @param data
+ * @param query
+ * @return
+ */
 bool Backtrack::tryMap(Vertex u, Vertex v, const Graph &data, const Graph &query){
 
 
@@ -161,12 +165,21 @@ bool Backtrack::tryMap(Vertex u, Vertex v, const Graph &data, const Graph &query
         if( (mapping.find(parent_u) != mapping.end()) && !data.IsNeighbor(v, mapping[parent_u])) return false;
     }
 
+    /// check if vertex v is already mapped on embedding
     for(auto pair: mapping){
         if(pair.second==v) return false;
     }
     return true;
 }
 
+/**
+ * GetExtendable: fetches next vertex "u" and its extendable candidates "Cm(u)" according to Candidate Size ordering
+ *
+ * @param data
+ * @param query
+ * @param cs
+ * @return
+ */
 pair<Vertex, vector<Vertex>> Backtrack::GetExtendable(const Graph &data, const Graph &query,
                                                       const CandidateSet &cs){
 
@@ -185,6 +198,15 @@ pair<Vertex, vector<Vertex>> Backtrack::GetExtendable(const Graph &data, const G
     return next;
 }
 
+/**
+ * GetCm: fetches Cm(u) for given vertex "u"
+ *
+ * @param u
+ * @param data
+ * @param query
+ * @param cs
+ * @return
+ */
 vector<Vertex> Backtrack::GetCm(Vertex u, const Graph &data, const Graph &query, const CandidateSet &cs){
 
     vector<Vertex> res = {};
