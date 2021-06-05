@@ -8,20 +8,15 @@
 #include <stack>
 #include <map>
 #include <queue>
+#include <ctime>
 
 using namespace std;
 
 stack<pair<Vertex, Vertex>> Backtrack::stack;
 map<Vertex, Vertex> Backtrack::mapping;
-set<Vertex>  Backtrack::EV;
+set<Vertex> Backtrack::EV;
 
-vector<vector<Vertex>> Backtrack::parentArray;
-vector<vector<Vertex>> Backtrack::childArray;
-
-
-Backtrack::Backtrack() {
-
-}
+Backtrack::Backtrack() {}
 
 Backtrack::~Backtrack() = default;
 
@@ -46,165 +41,158 @@ Backtrack::~Backtrack() = default;
 void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
                                 const CandidateSet &cs) {
 
-    // data init
-    mapping.clear();
-    EV.clear();
-    // data init done
-    BuildParentChild(query);
+    mapping.clear(); EV.clear();
 
-    // stack init
-    Vertex root = 35;
-    for (Vertex cds: cs.GetCandidateSet(root)) {
-        // Root is exception of DFS traverse in this case
-        stack.push(pair<Vertex, Vertex>(root, cds));
+    /// Root : 아무거나 잡아도 되는 게 맞다. BuildRoot 구현은 함
+    Vertex root = 0;
+    for(Vertex v : cs.GetCandidateSet(root)){
+        stack.push(pair<Vertex, Vertex>(root, v));
     }
-    EV.insert(root);
-    trace();
-    // stack init done
 
-    // Main start
-    while (!stack.empty()) {
-        Vertex curr = stack.top().first;
-        Vertex curr_m = stack.top().second;
-        cout << curr << " " << curr_m <<"\n";
-        if (Map(curr, curr_m)) {
+    int cnt = 0;
+    bool credit = true; // true when root
+    clock_t start = clock();
+    /// DFS 방식에는 문제가 없다.
+    while(!stack.empty())
+    {
+        clock_t now = clock();
+        if(now - start >= 60000) {
+            cout << "time out, total cnt: " << cnt << "\n";
+            return;
+        }
+
+        Vertex curr = stack.top().first, curr_m = stack.top().second;
+        /// 1. try Mapping - test passed
+        if( credit )
+        {
             mapping[curr] = curr_m;
-            if (mapping.size() == query.GetNumVertices()) {
-                cout << "*************************************************************************************** and last vertex was (" << curr << ", " << curr_m << ")\n";
-                cout << "a ";
-                vector<Vertex> match = {};
-                for_each(mapping.begin(), mapping.end(), [match](pair<Vertex, Vertex> v) mutable{
-                    cout << v.second << " ";
-                    match.push_back(v.second);
-                });
-                cout << "\n";
-                //checker(match, data, query, cs);
-            } else {
-
-                auto it = EV.find(curr);
-                if( it != EV.end()) EV.erase(it); // todo 오류 날 수도 있음
-
-                for_each(childArray[curr].begin(), childArray[curr].end(), [this](Vertex child) {
-                    if(CheckParent(child)) EV.insert(child);
-                });
-
-                pair<Vertex, vector<Vertex>> next = GetExtendable(data, query, cs); // todo error 처리가 안됨 -> 빈 vector로 일단 받음
-
-                for (Vertex v: next.second) {
-                    pair<Vertex, Vertex> t = pair<Vertex, Vertex>(next.first, v);
-                    stack.push(t);
+            /// 2. when success
+            if( mapping.size() == query.GetNumVertices() )
+            {
+                /// 2-1. if all are mapped, print one
+                cnt++;
+//                cout << " ";
+//                for_each(mapping.begin(), mapping.end(), [](pair<Vertex, Vertex> pair){
+//                    cout << pair.second << " ";
+//                });
+//                cout << "\n";
+                if(cnt>=100000) {
+                    cout << "total cnt done, elapsed time: " << clock() - start << "\n";
+                    return;
                 }
+                credit = false;
             }
-        } else {
+            else
+            {
+                /// 2-2. if there's more to map, go ahead
 
-            //cout << "************\n";
-            mapping.erase(mapping.find(curr));
-            stack.pop();
-            while(!stack.empty() && stack.top().first != curr){
-                //cout << curr << " " << curr_m << "\n";
-                curr = stack.top().first;
-                curr_m = stack.top().second;
+                    /// update EV
+                    auto it = EV.find(curr);
+                    if( it != EV.end()) EV.erase(it);
+                    for(size_t idx = query.GetNeighborStartOffset(curr); idx < query.GetNeighborEndOffset(curr); idx++ ){
+                        Vertex neighbor_of_u = query.GetNeighbor(idx);
+                        if(mapping.find(neighbor_of_u) == mapping.end()) EV.insert(neighbor_of_u); // in this condition, neighbor_of_u = child[u]
+                        // todo: 부모 중에 mapping 에 없는 놈이 있으면 reject 했으나, 새로운 방식에서 해당 경우에는 부모의 정의에 위배되므로 부모라 할 수 없고, 그래서 그냥 일단 넘어간다.
+                    }
+                    /// update done
+
+                    /// 2-2-1. Get next extendable Vertex
+                    pair<Vertex, vector<Vertex>> next = GetExtendable(data, query, cs); // if empty vector comes in, then it means failure, then restart
+                    /// 2-2-2. Push next to Stack
+                    if(next.second.empty()){
+                        credit = false;
+                        /// fail if nothing is pushed, erase added EV
+                        for(size_t idx = query.GetNeighborStartOffset(curr); idx < query.GetNeighborEndOffset(curr); idx++ ){
+                            Vertex neighbor_of_u = query.GetNeighbor(idx);
+                            if(mapping.find(neighbor_of_u) == mapping.end() && (EV.find(neighbor_of_u) != EV.end())) EV.erase(EV.find(neighbor_of_u));
+                        }
+                        EV.insert(curr);
+                        /// rollback done
+                    }
+                    for (Vertex v: next.second) {
+                        pair<Vertex, Vertex> t = pair<Vertex, Vertex>(next.first, v);
+                        stack.push(t);
+                    }
+            }
+        }
+        else
+        {
+            /// 3. if fails
+
+                /// 3-1. if mapping maintains, erase it
                 mapping.erase(mapping.find(curr));
+                /// 3-2. pop (curr, curr_m) pair
                 stack.pop();
-            }
-            EV.clear();
-            //cout << "************\n";
-
+                /// 3-3. check if stack.top is the same as curr -> pop until only v is changed
+                while(!stack.empty() && stack.top().first != curr){
+                    curr = stack.top().first;
+                    curr_m = stack.top().second;
+                    /// fail if nothing is pushed, erase added EV
+                    for(size_t idx = query.GetNeighborStartOffset(curr); idx < query.GetNeighborEndOffset(curr); idx++ ){
+                        Vertex neighbor_of_u = query.GetNeighbor(idx);
+                        if(mapping.find(neighbor_of_u) == mapping.end() && (EV.find(neighbor_of_u) != EV.end())) EV.erase(EV.find(neighbor_of_u));
+                    }
+                    EV.insert(curr);
+                    /// rollback done
+                    mapping.erase(mapping.find(curr));
+                    stack.pop();
+                }
+                credit = true;
+                /// EV update scheme ->
         }
-        trace();
+        //trace();
     }
-    // Main done
-
+    cout << "total cnt: " << cnt << "\n";
 }
 
 
-bool Backtrack::Map(Vertex u, Vertex v) {
+/// update ; need to check whether the data vertex is already in mapping or not
+bool Backtrack::tryMap(Vertex u, Vertex v, const Graph &data, const Graph &query){
 
 
-    if ( mapping[u] == v) return false;
-    else {
-        //cout << "mapped " << u <<" "<< v << "\n";
-        mapping[u] = v;
-        return true;
-    }
-}
+    /// approaching twice -> fails always
+    auto it = mapping.find(u);
+    if( (it != mapping.end()) && it->second == v) return false;
 
-
-pair<Vertex, vector<Vertex>> Backtrack::GetExtendable(const Graph &data, const Graph &query,
-                                                      const CandidateSet &cs) {
-    vector<int> cmuSizeArray;   // 배열
-    vector<pair<Vertex, vector<Vertex>>> availableVertex; // 각 extendable 별 가능한 vertex
-
-    for (Vertex u : EV) {
-        int eachExtendableCmuSize = 0;
-        vector<Vertex> eachExtendableVertex;
-        pair<Vertex, vector<Vertex>> temp;
-
-        for (Vertex eachV : cs.GetCandidateSet(u)) {
-            if (CheckCMU(data, u, eachV)) {
-                eachExtendableCmuSize++;
-                eachExtendableVertex.push_back(eachV);
-            }
-        }
-
-        cmuSizeArray.push_back(eachExtendableCmuSize);
-        temp.first = u;
-        temp.second = eachExtendableVertex;
-        availableVertex.push_back(temp);
+    /// for all u's neighbor (possible parent_u); IF neighbor is already in mapping then it is u's parent
+    for(size_t offset = query.GetNeighborStartOffset(u); offset < query.GetNeighborEndOffset(u); offset++){
+        Vertex parent_u = query.GetNeighbor(offset);
+        /// IF parent_u is in mapping AND parent_v is not a neighbor with v -> map fails
+        if( (mapping.find(parent_u) != mapping.end()) && !data.IsNeighbor(v, mapping[parent_u])) return false;
     }
 
-    auto minIdx = min_element(cmuSizeArray.begin(), cmuSizeArray.end()) - cmuSizeArray.begin();  // 최소 cmu size의 idx 찾기
-    pair<Vertex, vector<Vertex>> res;
-    if(availableVertex.empty()){
-        vector<Vertex> tmp = {};
-        res = pair<Vertex, vector<Vertex>>(-1, tmp);
-    }
-    else res = availableVertex.at(minIdx); // todo 이거 가능?
-
-    return res;
-}
-
-
-
-bool Backtrack::CheckCMU(const Graph &data, Vertex u, Vertex v) {
-
-    // check whether v is in Cm(u) of u
-    // visited
-    // for (auto &it : mapping) { if (it.second == v) return false; } // If already in mapping, then
-
-    int matchingNum = 0;
-    for (Vertex parent: parentArray[u]) {   // u의 부모들을 순회하며
-        if (data.IsNeighbor(mapping[parent], v)) matchingNum++; // 부모가 map된 vertex와 인자 v가 연결되어있는지 확인
-    }
-    cout << "CheckCMU of vertex " << u << ", " << "v ->" << matchingNum << " " << parentArray[u].size() ;
-    if (matchingNum == (int) parentArray[u].size()) return true;
-    return false;
-}
-
-
-void Backtrack::BuildParentChild(const Graph &query) {
-
-    int size = query.GetNumVertices();
-    for (int i = 0; i < size; i++) {    // Query Graph를 순회한다.
-        Vertex v = i;               // Query Graph 내의 Vertices를 id 순서대로 방문한다.
-        std::vector<Vertex> perVertexParArr;
-        std::vector<Vertex> perVertexCldArr;
-        for (size_t j = query.GetNeighborStartOffset(v); j < query.GetNeighborEndOffset(v); ++j) {
-            Vertex neighbor = query.GetNeighbor(j);
-            if (neighbor < v) perVertexParArr.push_back(neighbor);   // 각 Vertex의 neighbor 중 id가 작은 것을 담는다.
-            else perVertexCldArr.push_back(neighbor);
-        }
-        parentArray.push_back(perVertexParArr);
-        childArray.push_back(perVertexCldArr);
-    }
-}
-
-
-bool Backtrack::CheckParent(Vertex v) {
-    for (Vertex parent : parentArray[v]) {
-        if (mapping.find(parent) == mapping.end()) return false;
+    for(auto pair: mapping){
+        if(pair.second==v) return false;
     }
     return true;
+}
+
+pair<Vertex, vector<Vertex>> Backtrack::GetExtendable(const Graph &data, const Graph &query,
+                                                      const CandidateSet &cs){
+
+    pair<Vertex, vector<Vertex>> next = {};
+    size_t size = INT32_MAX;
+
+    /// candidate size ordering;
+    for(Vertex extendable_u : EV){
+        vector<Vertex> tmpSet = GetCm(extendable_u, data, query, cs);
+        size_t tmp = tmpSet.size();
+        if(tmp < size){
+            size = tmp;
+            next = pair<Vertex, vector<Vertex>>(extendable_u, tmpSet);
+        }
+    }
+    return next;
+}
+
+vector<Vertex> Backtrack::GetCm(Vertex u, const Graph &data, const Graph &query, const CandidateSet &cs){
+
+    vector<Vertex> res = {};
+    /// for all u's neighbor, if something is mapped(parent_u), and mapped one(parent_v) links to some v in C(u)
+    for(Vertex candidate : cs.GetCandidateSet(u)){
+        if(tryMap(u, candidate, data, query)) res.push_back(candidate);
+    }
+    return res;
 }
 
 void Backtrack::trace(){
@@ -223,32 +211,5 @@ void Backtrack::trace(){
     }
     cout << "]\n";
     cout << "***************************************************************\n";
-}
-
-/**
- * possibly merge with buildParentChild
- *
- * @param data
- * @param query
- * @param cs
- * @return
- */
-Vertex Backtrack::makeRoot(const Graph &data, const Graph &query,
-                           const CandidateSet &cs){
-
-    double min = INT_MAX;
-    Vertex root = 0;
-    for(Vertex u = 0; (size_t) u < query.GetNumVertices(); u++ ){
-        int cnt = 0;
-        for(Vertex v: cs.GetCandidateSet(u)){
-            if(query.GetDegree(u) <= data.GetDegree(v)) cnt++;
-        }
-        double arg = ((double) cnt) / query.GetDegree(u);
-        if(arg < min){
-            root = u;
-            min = arg;
-        }
-    }
-    return root;
 }
 
