@@ -25,21 +25,15 @@ public:
     static map<Vertex, Vertex> mapping;
     static set<Vertex> EV;
 
-    static vector<vector<Vertex>> parentArray;
-    static vector<vector<Vertex>> childArray;
-
-    Vertex makeRoot(const Graph &data, const Graph &query,
-                    const CandidateSet &cs);
     void PrintAllMatches(const Graph &data, const Graph &query,
                          const CandidateSet &cs);
-    bool Map(Vertex u, Vertex v);
-    bool CheckCMU(const Graph &data, Vertex u, Vertex v);
-    void BuildParentChild(const Graph &query);
-    bool CheckParent(Vertex v);
-    pair<Vertex, vector<Vertex>>GetExtendable(const Graph &data, const Graph &query, const CandidateSet &cs);
+
+    //Vertex BuildRoot(const Graph &data, const Graph &query, const CandidateSet &cs);
+    bool tryMap(Vertex u, Vertex v, const Graph &data, const Graph &query);
+    pair<Vertex, vector<Vertex>> GetExtendable(const Graph &data, const Graph &query,
+                                                          const CandidateSet &cs);
+    vector<Vertex> GetCm(Vertex u, const Graph &data, const Graph &query, const CandidateSet &cs);
     void trace();
-//    Vertex getMatching(Vertex u, vector<bool> dataFlag, vector<Vertex> matched, const CandidateSet &cs);
-//    void checker(const vector<Vertex> matched, const Graph &data, const Graph &query, const CandidateSet &cs);
 };
 
 
