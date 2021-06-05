@@ -11,6 +11,7 @@
 #include "graph.h"
 #include <utility>
 #include <stack>
+#include <map>
 
 using namespace std;
 
@@ -21,30 +22,24 @@ public:
     ~Backtrack();
 
     static stack<pair<Vertex, Vertex>> stack;
-    static vector<Vertex> mapping;
-    static vector<Vertex> extendable;
+    static map<Vertex, Vertex> mapping;
+    static set<Vertex> EV;
 
-    static vector<bool> visited;
-
-    // 05.31 대용 추가
-    static set<Vertex> visitedQuery;
-    static set<Vertex> notVisitedQuery;
     static vector<vector<Vertex>> parentArray;
     static vector<vector<Vertex>> childArray;
-    //
 
+    Vertex makeRoot(const Graph &data, const Graph &query,
+                    const CandidateSet &cs);
     void PrintAllMatches(const Graph &data, const Graph &query,
                          const CandidateSet &cs);
-
     bool Map(Vertex u, Vertex v);
-
     bool CheckCMU(const Graph &data, Vertex u, Vertex v);
-
-
     void BuildParentChild(const Graph &query);
     bool CheckParent(Vertex v);
     pair<Vertex, vector<Vertex>>GetExtendable(const Graph &data, const Graph &query, const CandidateSet &cs);
-    pair<Vertex, vector<Vertex>> CountCMU(const Graph &data, const CandidateSet &cs, vector<Vertex> extendables);
+    void trace();
+//    Vertex getMatching(Vertex u, vector<bool> dataFlag, vector<Vertex> matched, const CandidateSet &cs);
+//    void checker(const vector<Vertex> matched, const Graph &data, const Graph &query, const CandidateSet &cs);
 };
 
 
