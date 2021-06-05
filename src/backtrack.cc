@@ -73,7 +73,7 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
                 for_each(mapping.begin(), mapping.end(), [](pair<Vertex, Vertex> pair){
                     cout << pair.second << " ";
                 });
-                cout << "\n";
+                cout << "\b\n";
                 credit = false;
             }
             else
