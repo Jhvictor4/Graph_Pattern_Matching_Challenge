@@ -24,10 +24,12 @@ public:
     static stack<pair<Vertex, Vertex>> stack;
     static map<Vertex, Vertex> mapping;
     static set<Vertex> EV;
+
     static vector<vector<Vertex>> parentArray;
     static vector<vector<Vertex>> childArray;
-    //
 
+    Vertex makeRoot(const Graph &data, const Graph &query,
+                    const CandidateSet &cs);
     void PrintAllMatches(const Graph &data, const Graph &query,
                          const CandidateSet &cs);
     bool Map(Vertex u, Vertex v);
@@ -35,6 +37,9 @@ public:
     void BuildParentChild(const Graph &query);
     bool CheckParent(Vertex v);
     pair<Vertex, vector<Vertex>>GetExtendable(const Graph &data, const Graph &query, const CandidateSet &cs);
+    void trace();
+//    Vertex getMatching(Vertex u, vector<bool> dataFlag, vector<Vertex> matched, const CandidateSet &cs);
+//    void checker(const vector<Vertex> matched, const Graph &data, const Graph &query, const CandidateSet &cs);
 };
 
 
