@@ -2,11 +2,12 @@
 
 ## Member
 
-2019-12731 강지혁  2016-19620 정대용
+2019-12731 강지혁  
+2016-19620 정대용
 
 ## Report and Results
 
-Report: ./Graph Pattern Matching Challenge Report.pdf
+Report: ./Graph Pattern Matching Challenge Report.pdf  
 Results: ./result
 
 
