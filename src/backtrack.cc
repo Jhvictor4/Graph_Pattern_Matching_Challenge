@@ -47,6 +47,7 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
         stack.push(pair<Vertex, Vertex>(root, v));
     }
     /// information field
+    int cnt = 0;
     size_t N = query.GetNumVertices();       // N = query size
     bool credit = true;                      // flag to tell each step's result (success / fail)
     /// declaration done
@@ -62,12 +63,14 @@ void Backtrack::PrintAllMatches(const Graph &data, const Graph &query,
             mapping[curr] = curr_m;
             /// 1.1. when success
             if (mapping.size() == N) {
+                cnt++;
                 cout << "a ";
                 for_each(mapping.begin(), mapping.end(), [](pair<Vertex, Vertex> pair) {
                     cout << pair.second << " ";
                 });
                 cout << "\n";
                 credit = false;
+                if(cnt>=100000) return;
             }
             /// 1.2. there's more to map
             else {
